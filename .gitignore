@@ -1,2 +1,5 @@
 *.dSYM/
 icsh
+
+#Ignore the makefile extension folder
+.vscode/ 
