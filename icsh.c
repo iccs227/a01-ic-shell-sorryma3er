@@ -12,9 +12,11 @@
 //refactor out by features to make the main() cleaner
 void handle_exit(char *buffer);
 void handle_echo(char *buffer);
+void handle_double_bang(char **last_cmd);
 
 int main() {
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
+    char *last_cmd = NULL;
 
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
 
@@ -31,15 +33,23 @@ int main() {
 
         char buffer_cp[MAX_CMD_BUFFER];
         strcpy(buffer_cp, buffer);// make a copy here for func use later
-        printf("copy is: %s\n", buffer_cp);
+
         char *token = strtok(buffer_cp, " "); // tokenize from the copy wont affect ori buffer
 
         if (strcmp(token, "exit") == 0) {
             handle_exit(buffer); 
         } else if (strcmp(token, "echo") == 0) {
             handle_echo(buffer);
+        } else if (strcmp(token, "!!") == 0){
+            handle_double_bang(&last_cmd);
         } else {
             printf("bad command!\n");
+        }
+
+        // update last command
+        if (strcmp(buffer, "!!") != 0) {
+            if (last_cmd) free(last_cmd);
+            last_cmd = strdup(buffer);
         }
     }
 
@@ -53,10 +63,8 @@ void handle_exit(char *buffer) {
     //skip the exit word
     strtok(copy, " ");
     char *code_str = strtok(NULL, " ");
-    printf("code char is %s\n", code_str);
 
     if (!code_str) { //no exit code
-        printf("here\n");
         printf("Bye!\n");
         exit(0);
     } else {
@@ -69,10 +77,21 @@ void handle_exit(char *buffer) {
 }
 
 void handle_echo(char *buffer) {
-    char *to_print = buffer + 5; //buffer here is an addr. +5 will skip 'echo '
+    char *to_print = buffer + 5; // buffer here is an addr. +5 will skip 'echo '
     if (strlen(to_print) > 0) {
         printf("%s\n", to_print);
     } else {
         printf("\n");
     }
+}
+
+void handle_double_bang(char **last_cmd) {
+    if (!*last_cmd || strlen(*last_cmd) == 0) {// when last_cmd is empty
+        printf("There is no last command.\n");
+        return;
+    }
+
+    printf("%s\n", *last_cmd);
+
+    // TODO: actual logic to process last cmd:
 }
