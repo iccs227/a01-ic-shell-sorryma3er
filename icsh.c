@@ -52,7 +52,7 @@ void handle_exit(char *buffer) {
         int code = atoi(code_str) % 256;
         if (code < 0) code += 256;
         
-        printf("Bye!\n");
+        printf("bye\n");
         exit(code);
     }
 }
@@ -68,7 +68,6 @@ void handle_echo(char *buffer) {
 
 void handle_double_bang(char **last_cmd) {
     if (!*last_cmd || strlen(*last_cmd) == 0) {// when last_cmd is empty
-        printf("There is no last command.\n");
         return;
     }
 
@@ -96,7 +95,7 @@ void process_cmd(char *command, char **last_cmd) {
         printf("bad command!\n");
     }
 
-    if (strcmp(token, "!!") != 0) { // update the last_cmd field
+    if (strcmp(command, "!!") != 0) { // update the last_cmd field, !! shouldnt come with any other char
 
         if (*last_cmd) free(*last_cmd); // prevent mem leak
 
