@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
@@ -14,12 +15,15 @@ void handle_exit(char *buffer);
 void handle_echo(char *buffer);
 void handle_double_bang(char **last_cmd);
 void process_cmd(char *command, char **last_cmd);
+int run_script(char *path);
 
-int main() {
+int main(int argc, char **argv) { //argc for count, argv is array of argument
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
     char *last_cmd = NULL;
 
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
+
+    if (argc == 2) return run_script(argv[1]);
 
     //REPL
     while (1) {
@@ -102,4 +106,29 @@ void process_cmd(char *command, char **last_cmd) {
         //printf("last command before update is %s\n", command);
         *last_cmd = strdup(command);
     }
+}
+
+int run_script(char *path) {
+    char buffer[MAX_CMD_BUFFER];
+    char *last_cmd = NULL;
+
+    FILE *fp = fopen(path, "r");
+
+    if (!fp){ // file open failed
+        fprintf(stderr, "cannot open file %s: %s\n", path, strerror(errno));
+        return 1; // mark the failing by exit 1
+    }
+
+    while(fgets(buffer, MAX_CMD_BUFFER, fp)) {
+        printf("Read: %s\n", buffer);
+
+        buffer[strcspn(buffer, "\n")] = '\0';
+        if (buffer[0] == '\0') continue;
+
+        process_cmd(buffer, &last_cmd);
+    }
+
+    fclose(fp);
+    free(last_cmd);
+    return 0;
 }
