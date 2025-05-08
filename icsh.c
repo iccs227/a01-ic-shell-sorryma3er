@@ -21,10 +21,9 @@ int main(int argc, char **argv) { //argc for count, argv is array of argument
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
     char *last_cmd = NULL;
 
+    if (argc == 2) return run_script(argv[1]); // if two args are given, then its script mode
+
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
-
-    if (argc == 2) return run_script(argv[1]);
-
     //REPL
     while (1) {
         printf("icsh $ "); // prompt symbol
@@ -120,10 +119,10 @@ int run_script(char *path) {
     }
 
     while(fgets(buffer, MAX_CMD_BUFFER, fp)) {
-        printf("Read: %s\n", buffer);
+        //printf("Read: %s", buffer);
 
         buffer[strcspn(buffer, "\n")] = '\0';
-        if (buffer[0] == '\0') continue;
+        if (buffer[0] == '\0') continue; // skip when the line is empty
 
         process_cmd(buffer, &last_cmd);
     }
