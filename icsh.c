@@ -11,10 +11,10 @@
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
 //refactor out by features to make the main() cleaner
-void handle_exit(char *buffer);
+void handle_exit(char *buffer, int mode_indicator);
 void handle_echo(char *buffer);
-void handle_double_bang(char **last_cmd);
-void process_cmd(char *command, char **last_cmd);
+void handle_double_bang(char **last_cmd, int mode_indicator);
+void process_cmd(char *command, char **last_cmd, int mode_indicator);
 int run_script(char *path);
 
 int main(int argc, char **argv) { //argc for count, argv is array of argument
@@ -33,14 +33,14 @@ int main(int argc, char **argv) { //argc for count, argv is array of argument
 
         if (strlen(buffer) == 0) continue; // if input is empty, go to next round
 
-        process_cmd(buffer, &last_cmd);
+        process_cmd(buffer, &last_cmd, 1); // mode_indicator: 1 => interactive mode
     }
 
     if (last_cmd) free(last_cmd);
     return 0;
 }
 
-void handle_exit(char *buffer) {
+void handle_exit(char *buffer, int mode_indicator) {
     char copy[MAX_CMD_BUFFER];
     strcpy(copy, buffer);
 
@@ -49,13 +49,13 @@ void handle_exit(char *buffer) {
     char *code_str = strtok(NULL, " ");
 
     if (!code_str) { //no exit code
-        printf("Bye!\n");
+        if (mode_indicator) printf("bye\n"); // print bye only for interactive
         exit(0);
     } else {
         int code = atoi(code_str) % 256;
         if (code < 0) code += 256;
         
-        printf("bye\n");
+        if (mode_indicator) printf("bye\n");
         exit(code);
     }
 }
@@ -69,16 +69,16 @@ void handle_echo(char *buffer) {
     }
 }
 
-void handle_double_bang(char **last_cmd) {
+void handle_double_bang(char **last_cmd, int mode_indicator) {
     if (!*last_cmd || strlen(*last_cmd) == 0) {// when last_cmd is empty
         return;
     }
 
-    printf("%s\n", *last_cmd);
-    process_cmd(*last_cmd, last_cmd); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
+    if (mode_indicator) printf("%s\n", *last_cmd); // reprint only for interactive mode
+    process_cmd(*last_cmd, last_cmd, mode_indicator); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
 }
 
-void process_cmd(char *command, char **last_cmd) {
+void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     //printf("you said: %s\n", command);
 
     char cmd_copy[MAX_CMD_BUFFER];// make a cp for command
@@ -89,11 +89,11 @@ void process_cmd(char *command, char **last_cmd) {
     if (!token) return;
 
     if (strcmp(token, "exit") == 0) {
-        handle_exit(command);
+        handle_exit(command, mode_indicator);
     } else if (strcmp(token, "echo") == 0) {
         handle_echo(command);
     } else if (strcmp(command, "!!") == 0) {
-        handle_double_bang(last_cmd);
+        handle_double_bang(last_cmd, mode_indicator);
     } else {
         printf("bad command!\n");
     }
@@ -124,7 +124,7 @@ int run_script(char *path) {
         buffer[strcspn(buffer, "\n")] = '\0';
         if (buffer[0] == '\0') continue; // skip when the line is empty
 
-        process_cmd(buffer, &last_cmd);
+        process_cmd(buffer, &last_cmd, 0); // mode_indicator: 0 => script mode
     }
 
     fclose(fp);
