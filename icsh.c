@@ -9,12 +9,14 @@
 #include <errno.h>
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
+#define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
 
 //refactor out by features to make the main() cleaner
 void handle_exit(char *buffer, int mode_indicator);
 void handle_echo(char *buffer);
 void handle_double_bang(char **last_cmd, int mode_indicator);
 void process_cmd(char *command, char **last_cmd, int mode_indicator);
+void split_args(char *command, char *argv[]);
 int run_script(char *path);
 
 int main(int argc, char **argv) { //argc for count, argv is array of argument
@@ -95,7 +97,13 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     } else if (strcmp(command, "!!") == 0) {
         handle_double_bang(last_cmd, mode_indicator);
     } else {
-        printf("bad command!\n");
+        // external command handle:
+        char *argv[MAX_ARGS + 1]; // +1 for NULL sentinel
+        split_args(command, argv);
+
+        for (int i = 0; argv[i] != NULL; i++) {
+            printf("argv[%i]: %s\n", i, argv[i]);
+        }
     }
 
     if (strcmp(command, "!!") != 0) { // update the last_cmd field, !! shouldnt come with any other char
@@ -105,6 +113,20 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
         //printf("last command before update is %s\n", command);
         *last_cmd = strdup(command);
     }
+}
+
+void split_args(char *command, char *argv[]) {
+    char cmd_copy[MAX_CMD_BUFFER];
+    strcpy(cmd_copy, command);
+
+    int ind = 0;    
+    char *token = strtok(cmd_copy, " ");
+    while(token && ind < MAX_ARGS) {
+        argv[ind] = token;
+        token = strtok(NULL, " ");
+        ind ++;
+    }
+    argv[ind] = NULL; // add NULL sentinel
 }
 
 int run_script(char *path) {
