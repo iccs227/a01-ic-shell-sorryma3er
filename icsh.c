@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
@@ -16,7 +17,8 @@ void handle_exit(char *buffer, int mode_indicator);
 void handle_echo(char *buffer);
 void handle_double_bang(char **last_cmd, int mode_indicator);
 void process_cmd(char *command, char **last_cmd, int mode_indicator);
-void split_args(char *command, char *argv[]);
+void split_args(char *to_split, char *argv[]);
+void run_external(char *argv[]);
 int run_script(char *path);
 
 int main(int argc, char **argv) { //argc for count, argv is array of argument
@@ -97,13 +99,15 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     } else if (strcmp(command, "!!") == 0) {
         handle_double_bang(last_cmd, mode_indicator);
     } else {
-        // external command handle:
+        /*External command handle: */
         char *argv[MAX_ARGS + 1]; // +1 for NULL sentinel
-        split_args(command, argv);
+ 
+        char to_split[MAX_CMD_BUFFER]; // since cmd_copy is alr tokenized and contains \0 inside
+        strcpy(to_split, command);
 
-        for (int i = 0; argv[i] != NULL; i++) {
-            printf("argv[%i]: %s\n", i, argv[i]);
-        }
+        split_args(to_split, argv); // argv[i] points to something that initialize in this scope, prevent dangling pointer
+
+        if (argv[0]) run_external(argv);
     }
 
     if (strcmp(command, "!!") != 0) { // update the last_cmd field, !! shouldnt come with any other char
@@ -115,12 +119,26 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     }
 }
 
-void split_args(char *command, char *argv[]) {
-    char cmd_copy[MAX_CMD_BUFFER];
-    strcpy(cmd_copy, command);
+void run_external(char *argv[]) {
+    pid_t pid = fork();
 
+    if (pid < 0) {
+        perror("fork failed: ");
+        return;
+    } else if (pid == 0) { // child process
+        execvp(argv[0], argv);
+
+        fprintf(stderr, "running external command failed: %s, %s\n", argv[0], strerror(errno)); // reach here only on failure
+        exit(1);
+    } else { // parent process
+        int status;
+        waitpid(pid, &status, 0);
+    }
+}
+
+void split_args(char *to_split, char *argv[]) {
     int ind = 0;    
-    char *token = strtok(cmd_copy, " ");
+    char *token = strtok(to_split, " ");
     while(token && ind < MAX_ARGS) {
         argv[ind] = token;
         token = strtok(NULL, " ");
