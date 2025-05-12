@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
@@ -21,6 +22,13 @@ void split_args(char *to_split, char *argv[]);
 void run_external(char *argv[]);
 int run_script(char *path);
 
+static void handle_sigint(int sig_num);
+static void handle_sigtstp(int sig_num);
+static void install_signal_handler(void);
+
+static pid_t fg_pgid = 0;
+static int last_exit_status = 0;
+
 int main(int argc, char **argv) { //argc for count, argv is array of argument
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
     char *last_cmd = NULL;
@@ -28,6 +36,9 @@ int main(int argc, char **argv) { //argc for count, argv is array of argument
     if (argc == 2) return run_script(argv[1]); // if two args are given, then its script mode
 
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
+
+    install_signal_handler(); // install before REPL so the shell run on the custom signal handler
+    
     //REPL
     while (1) {
         printf("icsh $ "); // prompt symbol
@@ -80,6 +91,30 @@ void handle_double_bang(char **last_cmd, int mode_indicator) {
 
     if (mode_indicator) printf("%s\n", *last_cmd); // reprint only for interactive mode
     process_cmd(*last_cmd, last_cmd, mode_indicator); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
+}
+
+static void handle_sigint(int sig_num) {
+    if (fg_pgid > 0) kill(-fg_pgid, SIGINT);
+    // resend the signal to all the process with group id == fg_pgid
+}
+
+static void handle_sigtstp(int sig_num) {
+    if (fg_pgid > 0) kill(-fg_pgid, SIGTSTP);
+}
+
+static void install_signal_handler(void) {
+    struct sigaction sa_int, sa_tstp;
+
+    sigemptyset(&sa_int.sa_mask);
+    sa_int.sa_flags = SA_RESTART;
+    sa_int.sa_handler = handle_sigint;
+    sigaction(SIGINT, &sa_int, NULL);
+
+
+    sigemptyset(&sa_tstp.sa_mask);
+    sa_tstp.sa_flags = SA_RESTART;
+    sa_tstp.sa_handler = handle_sigtstp;
+    sigaction(SIGTSTP, &sa_tstp, NULL);
 }
 
 void process_cmd(char *command, char **last_cmd, int mode_indicator) {
