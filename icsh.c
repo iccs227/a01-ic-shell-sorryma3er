@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
@@ -110,7 +111,6 @@ static void install_signal_handler(void) {
     sa_int.sa_handler = handle_sigint;
     sigaction(SIGINT, &sa_int, NULL);
 
-
     sigemptyset(&sa_tstp.sa_mask);
     sa_tstp.sa_flags = SA_RESTART;
     sa_tstp.sa_handler = handle_sigtstp;
@@ -159,15 +159,38 @@ void run_external(char *argv[]) {
 
     if (pid < 0) {
         perror("fork failed: ");
+        last_exit_status = -1;
         return;
     } else if (pid == 0) { // child process
+        setpgid(getpid(), getpid());
+        printf("pgid in child process is %i\n", getpgrp());
+
+        signal(SIGINT, SIG_DFL); // set the child process signal handler back to default, so it reacts to SIGINT & SIGTSTP
+        signal(SIGTSTP, SIG_DFL);
+
         execvp(argv[0], argv);
 
         fprintf(stderr, "running external command failed: %s, %s\n", argv[0], strerror(errno)); // reach here only on failure
         exit(1);
     } else { // parent process
+        fg_pgid = pid; // let the signal handler now can direct the signal to foreground child process
+        printf("pgid in parent process is %i\n", getpgrp());
+        printf("pgid for child in parent process is: %i\n", getpgid(pid));
+        tcsetpgrp(STDIN_FILENO, pid); // give terminal control to the foreground process group
+
         int status;
-        waitpid(pid, &status, 0);
+        waitpid(pid, &status, WUNTRACED); // while waiting trace the exit status of child
+
+        if (WIFEXITED(status)) { // capture exit/stop status
+            last_exit_status = WEXITSTATUS(status);
+        } else if (WIFSIGNALED(status)) {
+            last_exit_status = WTERMSIG(status); // let exit status equals to the # of signal cause child to terminate
+        } else if (WIFSTOPPED(status)) {
+            last_exit_status = WSTOPSIG(status); // the # of signals cause child to stop
+        }
+
+        tcsetpgrp(STDIN_FILENO, getpid()); // give terminal back to parent process
+        fg_pgid = 0; // set forerground id back to 0, so handler no more redirect to pg
     }
 }
 
