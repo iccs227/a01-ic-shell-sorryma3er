@@ -78,7 +78,11 @@ void handle_exit(char *buffer, int mode_indicator) {
 
 void handle_echo(char *buffer) {
     char *to_print = buffer + 5; // buffer here is an addr. +5 will skip 'echo '
-    if (strlen(to_print) > 0) {
+
+    if (strcmp(to_print, "$?") == 0) {
+        printf("%i\n", last_exit_status);
+    }
+    else if (strlen(to_print) > 0) {
         printf("%s\n", to_print);
     } else {
         printf("\n");
@@ -134,8 +138,10 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
         handle_exit(command, mode_indicator);
     } else if (strcmp(token, "echo") == 0) {
         handle_echo(command);
+        last_exit_status = 0;
     } else if (strcmp(command, "!!") == 0) {
         handle_double_bang(last_cmd, mode_indicator);
+        last_exit_status = 0;
     } else {
         /*External command handle: */
         char *argv[MAX_ARGS + 1]; // +1 for NULL sentinel
