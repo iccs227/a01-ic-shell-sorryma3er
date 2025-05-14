@@ -115,6 +115,9 @@ static void install_signal_handler(void) {
     sa_tstp.sa_flags = SA_RESTART;
     sa_tstp.sa_handler = handle_sigtstp;
     sigaction(SIGTSTP, &sa_tstp, NULL);
+
+    signal(SIGTTOU, SIG_IGN); // ignore both SIGTTOU & SIGTTIN, so when shell is under bg, read and write wont stop the process
+    signal(SIGTTIN, SIG_IGN);
 }
 
 void process_cmd(char *command, char **last_cmd, int mode_indicator) {
@@ -163,7 +166,6 @@ void run_external(char *argv[]) {
         return;
     } else if (pid == 0) { // child process
         setpgid(getpid(), getpid());
-        printf("pgid in child process is %i\n", getpgrp());
 
         signal(SIGINT, SIG_DFL); // set the child process signal handler back to default, so it reacts to SIGINT & SIGTSTP
         signal(SIGTSTP, SIG_DFL);
@@ -173,9 +175,10 @@ void run_external(char *argv[]) {
         fprintf(stderr, "running external command failed: %s, %s\n", argv[0], strerror(errno)); // reach here only on failure
         exit(1);
     } else { // parent process
+        setpgid(pid, pid); // prevent race condtion here?
+
         fg_pgid = pid; // let the signal handler now can direct the signal to foreground child process
-        printf("pgid in parent process is %i\n", getpgrp());
-        printf("pgid for child in parent process is: %i\n", getpgid(pid));
+
         tcsetpgrp(STDIN_FILENO, pid); // give terminal control to the foreground process group
 
         int status;
