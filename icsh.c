@@ -188,8 +188,10 @@ void run_external(char *argv[]) {
             last_exit_status = WEXITSTATUS(status);
         } else if (WIFSIGNALED(status)) {
             last_exit_status = WTERMSIG(status); // let exit status equals to the # of signal cause child to terminate
+            write(STDOUT_FILENO, "\n", 1);
         } else if (WIFSTOPPED(status)) {
             last_exit_status = WSTOPSIG(status); // the # of signals cause child to stop
+            write(STDOUT_FILENO, "\n", 1);
         }
 
         tcsetpgrp(STDIN_FILENO, getpid()); // give terminal back to parent process
