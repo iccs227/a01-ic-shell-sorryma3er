@@ -2,12 +2,18 @@ CC=gcc
 CFLAGS=-Wall -g 
 BINARY=icsh
 
+SRCS=icsh.c command.c builtin.c 
+OBJS=$(SRCS:.c=.o)
+
 all: icsh
 
-icsh: icsh.c
-	$(CC) -o $(BINARY) $(CFLAGS) $<
+icsh: $(OBJS)
+	$(CC) -o $(BINARY) $(CFLAGS) $^
+
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
-
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) $(OBJS)
