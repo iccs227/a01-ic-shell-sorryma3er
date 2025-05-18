@@ -6,7 +6,7 @@
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
-void handle_exit(char *buffer) {
+void handle_exit(char *buffer, int mode_indicator) {
     char copy[MAX_CMD_BUFFER];
     strcpy(copy, buffer);
 
@@ -15,13 +15,13 @@ void handle_exit(char *buffer) {
     char *code_str = strtok(NULL, " ");
 
     if (!code_str) { //no exit code
-        printf("bye\n");
+        if (mode_indicator) printf("bye\n");
         exit(0);
     } else {
         int code = atoi(code_str) % 256;
         if (code < 0) code += 256;
         
-        printf("bye\n");
+        if (mode_indicator) printf("bye\n");
         exit(code);
     }
 }
@@ -35,11 +35,11 @@ void handle_echo(char *buffer) {
     }
 }
 
-void handle_double_bang(char **last_cmd) {
+void handle_double_bang(char **last_cmd, int mode_indicator) {
     if (!*last_cmd || strlen(*last_cmd) == 0) {// when last_cmd is empty
         return;
     }
 
-    printf("%s\n", *last_cmd);
-    process_cmd(*last_cmd, last_cmd); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
+    if (mode_indicator) printf("%s\n", *last_cmd);
+    process_cmd(*last_cmd, last_cmd, mode_indicator); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
 }

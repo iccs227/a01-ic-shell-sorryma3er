@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-Wall -g 
 BINARY=icsh
 
-SRCS=icsh.c command.c builtin.c 
+SRCS=icsh.c command.c builtin.c script.c
 OBJS=$(SRCS:.c=.o)
 
 all: icsh

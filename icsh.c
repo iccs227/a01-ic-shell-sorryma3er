@@ -7,12 +7,15 @@
  #include <string.h>
  #include <stdlib.h>
  #include "command.h"
+ #include "script.h"
 
  #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
- int main(void) {
+ int main(int argc, char *argv[]) {
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
     char *last_cmd = NULL;
+
+    if (argc == 2) return run_script(argv[1]); // if two args are given, then its script mode
 
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
 
@@ -25,7 +28,7 @@
 
         if (strlen(buffer) == 0) continue; // if input is empty, go to next round
 
-        process_cmd(buffer, &last_cmd);
+        process_cmd(buffer, &last_cmd, 1); // mode_indicator: 1 => interactive mode
     }
 
     if (last_cmd) free(last_cmd);

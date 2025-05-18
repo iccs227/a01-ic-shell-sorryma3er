@@ -6,7 +6,7 @@
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
-void process_cmd(char *command, char **last_cmd) {
+void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     char cmd_copy[MAX_CMD_BUFFER];// make a cp for command
     strcpy(cmd_copy, command);
 
@@ -14,11 +14,11 @@ void process_cmd(char *command, char **last_cmd) {
     if (!token) return;
 
     if (strcmp(token, "exit") == 0) {
-        handle_exit(command);
+        handle_exit(command, mode_indicator);
     } else if (strcmp(token, "echo") == 0) {
         handle_echo(command);
     } else if (strcmp(command, "!!") == 0) {
-        handle_double_bang(last_cmd);
+        handle_double_bang(last_cmd, mode_indicator);
     } else {
         printf("bad command!\n");
     }
