@@ -8,6 +8,7 @@
  #include <stdlib.h>
  #include "command.h"
  #include "script.h"
+ #include "signal.h"
 
  #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
@@ -18,6 +19,8 @@
     if (argc == 2) return run_script(argv[1]); // if two args are given, then its script mode
 
     printf("Starting IC shell! Type commands down below\n"); // welcome message before REPL
+
+    install_signal_handler(); // install before REPL so the shell run on the custom signal handler
 
     //REPL
     while (1) {

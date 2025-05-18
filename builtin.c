@@ -3,6 +3,7 @@
 #include <string.h>
 #include "builtin.h"
 #include "command.h"
+#include "signal.h"
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
@@ -28,7 +29,10 @@ void handle_exit(char *buffer, int mode_indicator) {
 
 void handle_echo(char *buffer) {
     char *to_print = buffer + 5; // buffer here is an addr. +5 will skip 'echo '
-    if (strlen(to_print) > 0) {
+
+    if (strcmp(to_print, "$?") == 0) {
+        printf("%i\n", last_exit_status);
+    } else if (strlen(to_print) > 0) {
         printf("%s\n", to_print);
     } else {
         printf("\n");
