@@ -6,6 +6,7 @@
 #include <string.h>
 #include "exec.h"
 #include "signal.h"
+#include "redirect.h"
 
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
 
@@ -21,6 +22,11 @@ void run_external(char *argv[]) {
 
         signal(SIGINT, SIG_DFL); // set the child process signal handler back to default, so it reacts to SIGINT & SIGTSTP
         signal(SIGTSTP, SIG_DFL);
+
+        Redirect redirect;
+        if (parse_redirect(argv, &redirect) < 0) exit(1); // parse failed
+        if (apply_redirect(&redirect) < 0) exit(1); // apply redirect failed
+        free_redirect(&redirect);
 
         execvp(argv[0], argv);
 
