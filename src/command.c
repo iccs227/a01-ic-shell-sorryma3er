@@ -4,7 +4,7 @@
 #include "command.h"
 #include "builtin.h"
 #include "exec.h"
-#include "signal.h"
+#include "shell_signal.h"
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final

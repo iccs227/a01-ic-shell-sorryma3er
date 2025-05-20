@@ -4,8 +4,8 @@ icsh
 #Ignore the makefile extension folder
 .vscode/ 
 
-#Ignore the temp file for refactoring
-temp.c
-
 #Ignore all the obj files
 *.o
+
+#Ignore the test file for I/O redirection
+test/*

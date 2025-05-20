@@ -1,18 +1,25 @@
 CC=gcc
-CFLAGS=-Wall -g 
+CFLAGS=-Wall -g -Iinclude # go to /include to find header files
 BINARY=icsh
 
-SRCS=icsh.c command.c builtin.c script.c exec.c signal.c redirect.c
-OBJS=$(SRCS:.c=.o)
+#define src, include, obj, bin directory
+SRCDIR = src
+INDIR = include
+OBJDIR = obj
+BINDIR = . # current dir
 
-all: icsh
+SRCS=$(wildcard $(SRCDIR)/*.c)
+OBJS=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 
-icsh: $(OBJS)
-	$(CC) -o $(BINARY) $(CFLAGS) $^
+all: $(BINDIR)/$(BINARY)
 
-
-%.o: %.c
+# compile
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# link
+$(BINDIR)/$(BINARY): $(OBJS)
+	$(CC) -o $(BINARY) $(CFLAGS) $^
 
 .PHONY: clean
 clean:

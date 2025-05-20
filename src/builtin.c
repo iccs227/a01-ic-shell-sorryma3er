@@ -3,7 +3,7 @@
 #include <string.h>
 #include "builtin.h"
 #include "command.h"
-#include "signal.h"
+#include "shell_signal.h"
 
 #define MAX_CMD_BUFFER 255 // maximum length of input; final
 

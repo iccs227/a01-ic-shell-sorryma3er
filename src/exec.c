@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include "exec.h"
-#include "signal.h"
+#include "shell_signal.h"
 #include "redirect.h"
 
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
