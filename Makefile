@@ -6,19 +6,22 @@ BINARY=icsh
 SRCDIR = src
 INDIR = include
 OBJDIR = obj
-BINDIR = . # current dir
 
 SRCS=$(wildcard $(SRCDIR)/*.c)
 OBJS=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 
-all: $(BINDIR)/$(BINARY)
+all: $(BINARY)
+
+# ensure the object directory exists
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
 # compile
-$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR) # prerequisite for obj directory exists only
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # link
-$(BINDIR)/$(BINARY): $(OBJS)
+$(BINARY): $(OBJS)
 	$(CC) -o $(BINARY) $(CFLAGS) $^
 
 .PHONY: clean
