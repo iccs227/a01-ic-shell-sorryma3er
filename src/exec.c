@@ -23,11 +23,6 @@ void run_external(char *argv[]) {
         signal(SIGINT, SIG_DFL); // set the child process signal handler back to default, so it reacts to SIGINT & SIGTSTP
         signal(SIGTSTP, SIG_DFL);
 
-        Redirect redirect;
-        if (parse_redirect(argv, &redirect) < 0) exit(1); // parse failed
-        if (apply_redirect(&redirect) < 0) exit(1); // apply redirect failed
-        free_redirect(&redirect);
-
         execvp(argv[0], argv);
 
         fprintf(stderr, "running external command failed: %s, %s\n", argv[0], strerror(errno)); // reach here only on failure

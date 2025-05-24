@@ -27,16 +27,23 @@ void handle_exit(char *buffer, int mode_indicator) {
     }
 }
 
-void handle_echo(char *buffer) {
-    char *to_print = buffer + 5; // buffer here is an addr. +5 will skip 'echo '
-
-    if (strcmp(to_print, "$?") == 0) {
-        printf("%i\n", last_exit_status);
-    } else if (strlen(to_print) > 0) {
-        printf("%s\n", to_print);
-    } else {
-        printf("\n");
+void handle_echo(char *argv[]) {
+    if (!argv[1]) { // echo + nothing
+        putchar('\n'); 
+        return;
     }
+
+    if (strcmp(argv[1], "$?") == 0 && argv[2] == NULL) { // echo $? only
+        printf("%d\n", last_exit_status);
+        return;
+    }
+
+    printf("%s", argv[1]);
+
+    for (int i = 2; argv[i] != NULL; i++) {
+        printf(" %s", argv[i]);
+    }
+    putchar('\n');
 }
 
 void handle_double_bang(char **last_cmd, int mode_indicator) {
