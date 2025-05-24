@@ -27,10 +27,15 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     Redirect redirect;
     if (parse_redirect(argv, &redirect) < 0) { // parse for redirect failed
         last_exit_status = 1; 
+        close(saved_in);
+        close(saved_out);
         return;
     }
     if (apply_redirect(&redirect) < 0) { // apply redirect failed
         last_exit_status = 1; 
+        free_redirect(&redirect);
+        close(saved_in);
+        close(saved_out);
         return;
     }
     free_redirect(&redirect);
