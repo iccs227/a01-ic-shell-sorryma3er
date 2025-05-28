@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+#include <termios.h>
 #include "shell_signal.h"
 #include "job.h"
 
@@ -21,19 +23,28 @@ void handle_sigtstp(int sig_num) {
 void handle_sigchld(int sig_num) {
     pid_t pid;
     int status;
-    bool printed_done = false;
+    bool printed = false;
 
+    // wipe out any unread keystrokes
+    tcflush(STDIN_FILENO, TCIFLUSH);
+
+    // erase the current line on-screen
+    write(STDOUT_FILENO, "\r\x1b[2K", 5);
+
+    // reap only our background jobs, print done messages
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         Job *job = find_by_pgid(pid);
         if (job) {
-            printf("[%i]+  Done\t%s\n", job->job_id, job->cmd);
-            remove_job(pid); // remove the job from the job list
-            printed_done = true;
+            char buf[512];
+            int n = snprintf(buf, sizeof(buf), "[%d]+  Done\t%s\n", job->job_id, job->cmd);
+            write(STDOUT_FILENO, buf, n);
+            remove_job(pid);
+            printed = true;
         }
     }
 
-    if (printed_done && fg_pgid == 0) {
-        printf("icsh $ ");
+    if (printed) {
+        write(STDOUT_FILENO, prompt, strlen(prompt));
         fflush(stdout);
     }
 }

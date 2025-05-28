@@ -6,12 +6,15 @@
  #include <stdio.h>
  #include <string.h>
  #include <stdlib.h>
+ #include <errno.h>
  #include "command.h"
  #include "script.h"
  #include "shell_signal.h"
  #include "trim.h"
 
  #define MAX_CMD_BUFFER 255 // maximum length of input; final
+
+ const char *prompt = "icsh $ ";
 
  int main(int argc, char *argv[]) {
     char buffer[MAX_CMD_BUFFER]; // where we store the user input
@@ -25,9 +28,11 @@
 
     //REPL
     while (1) {
-        printf("icsh $ "); // prompt symbol
+        printf("%s", prompt); // prompt symbol
+        fflush(stdout);
         
-        if (!fgets(buffer, MAX_CMD_BUFFER, stdin)) break; // read and put the input into buffer
+        if (!fgets(buffer, MAX_CMD_BUFFER, stdin)) break;
+
         buffer[strcspn(buffer, "\n")] = '\0'; // remove the trailing newline '\n' character
         trim(buffer); // trim leading and trailing spaces/tabs
 

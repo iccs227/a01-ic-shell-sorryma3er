@@ -10,5 +10,6 @@ void install_signal_handler(void);
 
 extern pid_t fg_pgid;
 extern int last_exit_status;
+extern const char *prompt;
 
 #endif
