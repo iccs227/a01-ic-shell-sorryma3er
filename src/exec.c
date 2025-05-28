@@ -4,11 +4,13 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include "exec.h"
 #include "shell_signal.h"
 #include "redirect.h"
-
-#define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
+#include "command.h"
+#include "builtin.h"
+#include "job.h"
 
 void run_external_fg(char *argv[]) {
     pid_t pid = fork();
@@ -52,13 +54,64 @@ void run_external_fg(char *argv[]) {
     }
 }
 
-void split_args(char *to_split, char *argv[]){
-    int idx = 0;
-    char *token = strtok(to_split, " "); // get the first word
-    while(token && idx < MAX_ARGS) {
-        argv[idx] = token; // store the token in the array
-        token = strtok(NULL, " "); // get the next word
-        idx++;
+void run_cmd(char *command, char *argv[], char **last_cmd, int mode_indicator, bool in_subshell) {
+    /* Redirect register here so it works for buildtin as well */
+    int saved_out = dup(STDOUT_FILENO);
+    int saved_in = dup(STDIN_FILENO);
+
+    Redirect redirect;
+    if (parse_redirect(argv, &redirect) < 0) { // parse for redirect failed
+        last_exit_status = 1; 
+        close(saved_in);
+        close(saved_out);
+        return;
     }
-    argv[idx] = NULL; // add NULL sentinel
+    if (apply_redirect(&redirect) < 0) { // apply redirect failed
+        last_exit_status = 1; 
+        free_redirect(&redirect);
+        close(saved_in);
+        close(saved_out);
+        return;
+    }
+    free_redirect(&redirect);
+
+    char cmd_copy[MAX_CMD_BUFFER];
+    strcpy(cmd_copy, command);
+    char *token = strtok(cmd_copy, " "); // get first token from copy, so ori command field will stay the same
+    if (!token) {
+        close(saved_in);
+        close(saved_out);
+        return; // no command to run
+    }
+
+    if (strcmp(token, "exit") == 0) {
+        handle_exit(command, mode_indicator);
+    } else if (strcmp(token, "echo") == 0) {
+        handle_echo(argv);
+        last_exit_status = 0; //builtin command exit with 0
+    } else if (strcmp(token, "jobs") == 0) {
+        list_jobs();
+        last_exit_status = 0;
+    } else {
+        if (in_subshell) { // if in subshell, then rn its running external cmd in child process at the bg
+            execvp(argv[0], argv);
+
+            fprintf(stderr, "running external command in the background failed: %s, %s\n", argv[0], strerror(errno)); // reach here only on failure
+            exit(1);
+        } else { // not in subshell, so run external command in foreground
+            if (argv[0]) run_external_fg(argv);
+        }
+    }
+
+    // restore the fd back to saved ones here:
+    if (dup2(saved_in, STDIN_FILENO) < 0) {
+        perror("dup2 restore stdin failed");
+        exit(1);
+    }
+    if (dup2(saved_out, STDOUT_FILENO) < 0) {
+        perror("dup2 restore stdout failed");
+        exit(1);
+    }
+    close(saved_in);
+    close(saved_out);   
 }

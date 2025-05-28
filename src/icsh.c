@@ -12,8 +12,6 @@
  #include "shell_signal.h"
  #include "trim.h"
 
- #define MAX_CMD_BUFFER 255 // maximum length of input; final
-
  const char *prompt = "icsh $ ";
 
  int main(int argc, char *argv[]) {
