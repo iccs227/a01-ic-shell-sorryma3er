@@ -57,9 +57,9 @@ void list_jobs(void) {
     if (max_id == 0) return;  // no jobs
 
     for (int id = 1; id <= max_id; id++) {
-        Job *j = find_by_jid(id);
-        if (j) {
-            printf("[%d] Running\t%s", j->job_id, j->cmd);
+        Job *job = find_by_jid(id);
+        if (job) {
+            printf("[%d] Running\t%s\n", job->job_id, job->cmd);
         }
     }
 }

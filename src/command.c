@@ -23,33 +23,35 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     char cmd_no_amp[MAX_CMD_BUFFER];
     strcpy(cmd_no_amp, command);
 
-    /* Detect backgroud sign '&' and parse */
-    bool is_background = false; // flag to indicate if the command is run in background
-    if (cmd_no_amp[strlen(cmd_no_amp) - 1] == '&') {
-        is_background = true;
-        cmd_no_amp[strlen(cmd_no_amp) - 1] = '\0'; // remove '&'
+    bool is_background_pre = strip_ampersand(cmd_no_amp); // remove trailing '&' on raw command
 
-        // remove trailing space before '&'
-        size_t len = strlen(cmd_no_amp);
-        while (len > 0 && cmd_no_amp[len - 1] == ' ') {
-            cmd_no_amp[len - 1] = '\0';
-            len--;
+    /* Double bang check and expansion */
+    char expanded_cmd[MAX_CMD_BUFFER];
+    bool is_double_bang = (strcmp(cmd_no_amp, "!!") == 0);
+    if (is_double_bang) {
+        if (!*last_cmd) {
+            fprintf(stderr, "No previous command\n");
+            return;
         }
+        handle_double_bang(last_cmd, mode_indicator);
+        strcpy(expanded_cmd, *last_cmd);
+    } else {
+        strcpy(expanded_cmd, cmd_no_amp);
     }
 
-    /* Double bang check */
-    if (strcmp(cmd_no_amp, "!!") != 0) {
+    // update last_cmd only if not double bang
+    if (!is_double_bang) {
         if (*last_cmd) free(*last_cmd);
-        *last_cmd = strdup(command); // update last_cmd with the raw command
-    } else {
-        // pull out handle_double_bang function
-        handle_double_bang(last_cmd, mode_indicator);
-        return; // if its a double bang, then no need to run the command
+        *last_cmd = strdup(command);
     }
+
+    // reprocess the expanded command
+    bool is_background_aft = strip_ampersand(expanded_cmd); // remove trailing '&' on expanded command
+    bool is_background = is_background_pre || is_background_aft; // if either pre or post processing has '&', then its a background process
 
     char *argv[MAX_ARGS + 1]; // +1 for NULL sentinel
     char to_split[MAX_CMD_BUFFER];
-    strcpy(to_split, cmd_no_amp);
+    strcpy(to_split, expanded_cmd);
     split_args(to_split, argv); // split on the cleaned command without '&'
 
     if (is_background) {
@@ -61,25 +63,24 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
         } else if (pid == 0) { // child process run in background
             setpgid(getpid(), getpid());
 
-            run_cmd(command, cmd_no_amp, argv, last_cmd, mode_indicator, true);
+            run_cmd(expanded_cmd, argv, last_cmd, mode_indicator, true);
             exit(last_exit_status);
         } else {
             setpgid(pid, pid);
 
-            int job_id = add_job(pid, cmd_no_amp);
+            int job_id = add_job(pid, expanded_cmd);
             last_exit_status = 0; // background job always exit with 0
             printf("[%i] %i\n", job_id, pid);
             fflush(stdout); // flush the output buffer to ensure the job id is printed immediately
             return;
         }
     } else { // foreground process
-        run_cmd(command, cmd_no_amp, argv, last_cmd, mode_indicator, false);
+        run_cmd(expanded_cmd, argv, last_cmd, mode_indicator, false);
     }
 
 }
 
-
-void run_cmd(char *raw_cmd, char *cmd_no_amp, char *argv[], char **last_cmd, int mode_indicator, bool in_subshell) {
+void run_cmd(char *command, char *argv[], char **last_cmd, int mode_indicator, bool in_subshell) {
     /* Redirect register here so it works for buildtin as well */
     int saved_out = dup(STDOUT_FILENO);
     int saved_in = dup(STDIN_FILENO);
@@ -101,7 +102,7 @@ void run_cmd(char *raw_cmd, char *cmd_no_amp, char *argv[], char **last_cmd, int
     free_redirect(&redirect);
 
     char cmd_copy[MAX_CMD_BUFFER];
-    strcpy(cmd_copy, raw_cmd);
+    strcpy(cmd_copy, command);
     char *token = strtok(cmd_copy, " "); // get first token from copy, so ori command field will stay the same
     if (!token) {
         close(saved_in);
@@ -110,10 +111,13 @@ void run_cmd(char *raw_cmd, char *cmd_no_amp, char *argv[], char **last_cmd, int
     }
 
     if (strcmp(token, "exit") == 0) {
-        handle_exit(raw_cmd, mode_indicator);
+        handle_exit(command, mode_indicator);
     } else if (strcmp(token, "echo") == 0) {
         handle_echo(argv);
         last_exit_status = 0; //builtin command exit with 0
+    } else if (strcmp(token, "jobs") == 0) {
+        list_jobs();
+        last_exit_status = 0;
     } else {
         if (in_subshell) { // if in subshell, then rn its running external cmd in child process at the bg
             execvp(argv[0], argv);
@@ -153,4 +157,22 @@ bool is_repeat_bg(char *command, char *last_cmd) { // Note: "!!&" not supported,
     size_t len = strlen(last_cmd);
     if (len == 0) return false;
     return last_cmd[len - 1] == '&';
+}
+
+bool strip_ampersand(char *command) { // return true if command ends with '&', false otherwise
+    bool is_background = false;
+
+    if (command[strlen(command) - 1] == '&') {
+        is_background = true;
+        command[strlen(command) - 1] = '\0'; // remove '&'
+
+        // remove trailing space before '&'
+        size_t len = strlen(command);
+        while (len > 0 && command[len - 1] == ' ') {
+            command[len - 1] = '\0';
+            len--;
+        }
+    }
+
+    return is_background;
 }

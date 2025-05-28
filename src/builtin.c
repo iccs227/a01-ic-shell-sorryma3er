@@ -52,5 +52,4 @@ void handle_double_bang(char **last_cmd, int mode_indicator) {
     }
 
     if (mode_indicator) printf("%s\n", *last_cmd);
-    process_cmd(*last_cmd, last_cmd, mode_indicator); // wrap up processing logics into a chunk, reuse in both main() & double_bang()
 }
