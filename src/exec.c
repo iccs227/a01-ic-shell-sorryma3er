@@ -10,12 +10,12 @@
 
 #define MAX_ARGS 16 // assume the external command contains no more than 16 words; final
 
-void run_external(char *argv[]) {
+void run_external_fg(char *argv[]) {
     pid_t pid = fork();
 
     if (pid < 0) {
         perror("fork failed: ");
-        last_exit_status = -1;
+        last_exit_status = 1;
         return;
     } else if (pid == 0) { // child process
         setpgid(getpid(), getpid());

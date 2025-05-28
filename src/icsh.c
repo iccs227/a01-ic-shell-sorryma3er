@@ -8,7 +8,8 @@
  #include <stdlib.h>
  #include "command.h"
  #include "script.h"
- #include "signal.h"
+ #include "shell_signal.h"
+ #include "trim.h"
 
  #define MAX_CMD_BUFFER 255 // maximum length of input; final
 
@@ -28,6 +29,7 @@
         
         if (!fgets(buffer, MAX_CMD_BUFFER, stdin)) break; // read and put the input into buffer
         buffer[strcspn(buffer, "\n")] = '\0'; // remove the trailing newline '\n' character
+        trim(buffer); // trim leading and trailing spaces/tabs
 
         if (strlen(buffer) == 0) continue; // if input is empty, go to next round
 
