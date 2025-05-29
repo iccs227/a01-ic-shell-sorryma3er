@@ -32,14 +32,19 @@ void handle_sigchld(int sig_num) {
     write(STDOUT_FILENO, "\r\x1b[2K", 5);
 
     // reap only our background jobs, print done messages
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        Job *job = find_by_pgid(pid);
-        if (job) {
+    Job *job = jobs_head;
+    while (job) {
+        if ((pid = waitpid(-job->pgid, &status, WNOHANG)) > 0) {
             char buf[512];
             int n = snprintf(buf, sizeof(buf), "[%d]+  Done\t%s\n", job->job_id, job->cmd);
             write(STDOUT_FILENO, buf, n);
-            remove_job(pid);
+            remove_job(job->pgid);
             printed = true;
+
+            job = jobs_head;
+            continue;
+        } else {
+            job = job->next; // move to the next job if no job is reaped
         }
     }
 
@@ -63,7 +68,7 @@ void install_signal_handler(void) {
     sigaction(SIGTSTP, &sa_tstp, NULL);
 
     sigemptyset(&sa_chld.sa_mask);
-    sa_chld.sa_flags = SA_RESTART | SA_NOCLDSTOP; // only reap terminated children, ignore stopped children
+    sa_chld.sa_flags = SA_RESTART;
     sa_chld.sa_handler = handle_sigchld;
     sigaction(SIGCHLD, &sa_chld, NULL);
 
