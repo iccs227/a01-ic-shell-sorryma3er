@@ -32,6 +32,11 @@ void handle_sigchld(int sig) {
 
     Job *job = jobs_head;
     while (job) {
+        if (job->pgid == fg_pgid) {
+            job = job->next;   // skip the foreground job entirely
+            continue;
+        }
+
         pid = waitpid(-job->pgid, &status, WNOHANG|WUNTRACED);
         if (pid > 0) {
             if (WIFEXITED(status) || WIFSIGNALED(status)) {

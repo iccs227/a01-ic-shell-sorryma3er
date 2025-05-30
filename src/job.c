@@ -6,16 +6,17 @@
 // initialize extern variables
 Job *jobs_head = NULL; 
 
-int add_job(pid_t pgid, const char *cmd) {
+int add_job(pid_t pgid, const char *cmd, JobState state) {
     int idx = 1;
     while (find_by_jid(idx)) { // find the smallest free job id
         idx++;
     }
-    
+
     Job *new_job = malloc(sizeof *new_job);
     new_job->job_id = idx;
     new_job->pgid   = pgid;
     new_job->cmd    = strdup(cmd);
+    new_job->state  = state;
     new_job->next   = NULL;
 
     if (!jobs_head) {
@@ -65,7 +66,8 @@ void list_jobs(void) {
     for (int id = 1; id <= max_id; id++) {
         Job *job = find_by_jid(id);
         if (job) {
-            printf("[%d] Running\t%s\n", job->job_id, job->cmd);
+            const char *state = (job->state == RUNNING) ? "Running" : "Stopped";
+            printf("[%d] %s\t%s%s\n", job->job_id, state, job->cmd, (job->state == RUNNING) ? " &" : ""); // append '&' if the job is running
         }
     }
 }

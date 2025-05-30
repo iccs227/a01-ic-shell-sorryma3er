@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
 #include "builtin.h"
 #include "command.h"
 #include "shell_signal.h"
-
-#define MAX_CMD_BUFFER 255 // maximum length of input; final
+#include "redirect.h"
+#include "job.h"
 
 void handle_exit(char *buffer, int mode_indicator) {
     char copy[MAX_CMD_BUFFER];
@@ -34,7 +36,7 @@ void handle_echo(char *argv[]) {
     }
 
     if (strcmp(argv[1], "$?") == 0 && argv[2] == NULL) { // echo $? only
-        printf("%d\n", last_exit_status);
+        printf("%i\n", last_exit_status);
         return;
     }
 
@@ -52,4 +54,86 @@ void handle_double_bang(char **last_cmd, int mode_indicator) {
     }
 
     if (mode_indicator) printf("%s\n", *last_cmd);
+}
+
+void handle_fg(char *job_specifier) {
+    if (job_specifier[0] != '%') {
+        PANIC("Error in fg: fg command requires a job specifier starting with '%%'\n");
+        last_exit_status = 1;
+        return;
+    }
+
+    int job_id = atoi(job_specifier + 1); // skip the '%' character
+    if (job_id <= 0) {
+        PANIC("Error in fg: Invalid job id %i\n", job_id);
+        last_exit_status = 1;
+        return;
+    }
+
+    Job *job = find_by_jid(job_id);
+    if (!job) {
+        PANIC("Error in fg: No such job with job id %i\n", job_id);
+        last_exit_status = 1;
+        return;
+    }
+
+    printf("%s\n", job->cmd);
+    fflush(stdout);
+
+    // bring the job to the foreground
+    fg_pgid = job->pgid;
+    tcsetpgrp(STDIN_FILENO, fg_pgid);
+
+    // restore the job if stopped
+    if (job->state == STOPPED) {
+        kill(-job->pgid, SIGCONT); // send SIGCONT to the process group
+        job->state = RUNNING;
+    }
+
+    int status;
+    waitpid(-job->pgid, &status, WUNTRACED);
+    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+        remove_job(job->pgid);
+    } else if (WIFSTOPPED(status)) {
+        job->state = STOPPED;
+        printf("[%i]+ Stopped\t%s\n", job_id, job->cmd);
+        fflush(stdout);
+        last_exit_status = WSTOPSIG(status);
+    }
+
+    tcsetpgrp(STDIN_FILENO, getpid()); // give terminal back to parent process
+    fg_pgid = 0; // reset foreground process group ID
+    last_exit_status = 0;
+}
+
+void handle_bg(char *job_specifier) {
+    if (job_specifier[0] != '%') {
+        PANIC("Error in bg: bg command requires a job specifier starting with '%%'\n");
+        last_exit_status = 1;
+        return;
+    }
+
+    int job_id = atoi(job_specifier + 1);
+    if (job_id <= 0) {
+        PANIC("Error in bg: invalid job id %i\n", job_id);
+        last_exit_status = 1;
+        return;
+    }
+
+    Job *job = find_by_jid(job_id);
+    if (!job) {
+        PANIC("Error in bg: no such job with job id %i\n", job_id);
+        last_exit_status = 1;
+        return;
+    }
+
+    if (job->state == STOPPED) {
+        kill(-job->pgid, SIGCONT);
+        job->state = RUNNING;
+        printf("[%i]+ %s &\n", job_id, job->cmd);
+        last_exit_status = 0;
+    } else {
+        PANIC("Error in bg: job %i already running\n", job_id);
+        last_exit_status = 1;
+    }
 }

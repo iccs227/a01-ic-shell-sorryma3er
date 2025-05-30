@@ -65,7 +65,7 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
         } else {
             setpgid(pid, pid);
 
-            int job_id = add_job(pid, expanded_cmd);
+            int job_id = add_job(pid, expanded_cmd, RUNNING);
             last_exit_status = 0; // background job always exit with 0
             printf("[%i] %i\n", job_id, pid);
             fflush(stdout); // flush the output buffer to ensure the job id is printed immediately
