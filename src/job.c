@@ -11,15 +11,21 @@ int add_job(pid_t pgid, const char *cmd) {
     while (find_by_jid(idx)) { // find the smallest free job id
         idx++;
     }
-    Job *new_job = malloc(sizeof(Job));
-    if (!new_job) return -1;
+    
+    Job *new_job = malloc(sizeof *new_job);
     new_job->job_id = idx;
     new_job->pgid   = pgid;
     new_job->cmd    = strdup(cmd);
-    new_job->next   = jobs_head;
-    jobs_head       = new_job;
+    new_job->next   = NULL;
 
-    return idx;
+    if (!jobs_head) {
+        jobs_head = new_job;
+    } else {
+        Job *t = jobs_head;
+        while (t->next) t = t->next;
+        t->next = new_job;
+    }
+    return new_job->job_id;
 }
 
 int remove_job(pid_t pgid) {

@@ -20,35 +20,39 @@ void handle_sigtstp(int sig_num) {
     if (fg_pgid > 0) kill(-fg_pgid, SIGTSTP);
 }
 
-void handle_sigchld(int sig_num) {
+void handle_sigchld(int sig) {
     pid_t pid;
     int status;
+    char buf[256];
     bool printed = false;
 
-    // wipe out any unread keystrokes
+    // clear user input
     tcflush(STDIN_FILENO, TCIFLUSH);
-
-    // erase the current line on-screen
     write(STDOUT_FILENO, "\r\x1b[2K", 5);
 
-    // reap only our background jobs, print done messages
     Job *job = jobs_head;
     while (job) {
-        if ((pid = waitpid(-job->pgid, &status, WNOHANG)) > 0) {
-            char buf[512];
-            int n = snprintf(buf, sizeof(buf), "[%d]+  Done\t%s\n", job->job_id, job->cmd);
-            write(STDOUT_FILENO, buf, n);
-            remove_job(job->pgid);
-            printed = true;
+        pid = waitpid(-job->pgid, &status, WNOHANG|WUNTRACED);
+        if (pid > 0) {
+            if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                int n = snprintf(buf, sizeof(buf), "[%i]+ Done\t%s\n", job->job_id, job->cmd);
+                write(STDOUT_FILENO, buf, n);
+                remove_job(job->pgid);
+                printed = true;
 
-            job = jobs_head;
-            continue;
-        } else {
-            job = job->next; // move to the next job if no job is reaped
+                job = jobs_head;
+                continue;
+            } else if (WIFSTOPPED(status)) {
+                job->state = STOPPED;
+                int n = snprintf(buf, sizeof(buf), "[%i]+ Stopped\t%s\n", job->job_id, job->cmd);
+                write(STDOUT_FILENO, buf, n);
+                printed = true;
+            }
         }
+        job = job->next;
     }
 
-    if (printed) {
+    if (printed) { // prevent job completion message printed on the same line as the prompt
         write(STDOUT_FILENO, prompt, strlen(prompt));
         fflush(stdout);
     }
