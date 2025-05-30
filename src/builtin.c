@@ -98,7 +98,11 @@ void handle_fg(char *job_specifier) {
 
     int status;
     waitpid(-job->pgid, &status, WUNTRACED);
-    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    if (WIFEXITED(status)) {
+        remove_job(job->pgid);
+    } else if (WIFSIGNALED(status)) {
+        last_exit_status = WTERMSIG(status);
+        write(STDOUT_FILENO, "\n", 1); // let next prompt start on a new line
         remove_job(job->pgid);
     } else if (WIFSTOPPED(status)) {
         job->state = STOPPED;
