@@ -26,10 +26,6 @@ void handle_sigchld(int sig) {
     char buf[256];
     bool printed = false;
 
-    // clear user input
-    tcflush(STDIN_FILENO, TCIFLUSH);
-    write(STDOUT_FILENO, "\r\x1b[2K", 5);
-
     Job *job = jobs_head;
     while (job) {
         if (job->pgid == fg_pgid) {
@@ -40,6 +36,10 @@ void handle_sigchld(int sig) {
         pid = waitpid(-job->pgid, &status, WNOHANG|WUNTRACED);
         if (pid > 0) {
             if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                // clear user input, still dont know how to save current user input
+                tcflush(STDIN_FILENO, TCIFLUSH);
+                write(STDOUT_FILENO, "\r\x1b[2K", 5);
+
                 int n = snprintf(buf, sizeof(buf), "[%i]+ Done\t%s\n", job->job_id, job->cmd);
                 write(STDOUT_FILENO, buf, n);
                 remove_job(job->pgid);
@@ -57,7 +57,7 @@ void handle_sigchld(int sig) {
         job = job->next;
     }
 
-    if (printed) { // prevent job completion message printed on the same line as the prompt
+    if (printed && fg_pgid == 0) { // prevent job completion message printed on the same line as the prompt
         write(STDOUT_FILENO, prompt, strlen(prompt));
         fflush(stdout);
     }
