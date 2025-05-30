@@ -77,6 +77,12 @@ void handle_fg(char *job_specifier) {
         return;
     }
 
+    // block SIGCHLD during bringing the job to foreground
+    sigset_t mask, oldmask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &mask, &oldmask);
+
     printf("%s\n", job->cmd);
     fflush(stdout);
 
@@ -96,13 +102,15 @@ void handle_fg(char *job_specifier) {
         remove_job(job->pgid);
     } else if (WIFSTOPPED(status)) {
         job->state = STOPPED;
-        printf("[%i]+ Stopped\t%s\n", job_id, job->cmd);
+        printf("\n[%i]+ Stopped\t%s\n", job_id, job->cmd);
         fflush(stdout);
         last_exit_status = WSTOPSIG(status);
     }
 
     tcsetpgrp(STDIN_FILENO, getpid()); // give terminal back to parent process
     fg_pgid = 0; // reset foreground process group ID
+
+    sigprocmask(SIG_SETMASK, &oldmask, NULL); // restore the previous signal mask
     last_exit_status = 0;
 }
 
