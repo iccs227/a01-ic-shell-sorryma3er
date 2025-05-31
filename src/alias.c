@@ -72,8 +72,9 @@ int remove_alias(const char *alias_name) {
 
 void list_aliases(void) {
     Alias *curr = alias_head;
+    int count = 0;
     while (curr) {
-        printf("alias %s='%s'\n", curr->alias_name, curr->alias_val);
+        printf("alias [%i]: %s='%s'\n", ++count, curr->alias_name, curr->alias_val);
         curr = curr->next;
     }
 }

@@ -14,4 +14,6 @@ bool strip_ampersand(char *command); // remove the trailing '&' from the command
 
 void split_args(char *to_split, char *argv[]); //split the command into argv[] + NULL sentinel
 
+bool expand_alias(char *expanded_cmd, char *argv[]); // expand the alias in the command, return true if alias is expanded
+
 #endif

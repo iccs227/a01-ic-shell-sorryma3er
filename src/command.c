@@ -9,6 +9,7 @@
 #include "shell_signal.h"
 #include "redirect.h"
 #include "job.h"
+#include "alias.h"
 
 void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     if (is_repeat_bg(command, *last_cmd)) {
@@ -50,6 +51,11 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     char to_split[MAX_CMD_BUFFER];
     strcpy(to_split, expanded_cmd);
     split_args(to_split, argv); // split on the cleaned command without '&'
+
+    if (expand_alias(expanded_cmd, argv)) {
+        strcpy(to_split, expanded_cmd);
+        split_args(to_split, argv); // split again after alias expansion
+    }
 
     if (is_background) {
         pid_t pid = fork();
@@ -122,3 +128,30 @@ bool strip_ampersand(char *command) { // return true if command ends with '&', f
 
     return is_background;
 }
+
+bool expand_alias(char *expanded_cmd, char *argv[]) {
+    if (!argv[0]) return false;
+    Alias *alias = find_alias(argv[0]);
+    if (!alias) return false; // no alias found
+
+    char peek_copy[MAX_CMD_BUFFER];
+    strncpy(peek_copy, alias->alias_val, sizeof(peek_copy));
+    peek_copy[sizeof(peek_copy) - 1] = '\0';
+    char *token = strtok(peek_copy, " "); // get the first word of the alias value
+    if (token && strcmp(token, argv[0]) == 0) return false; // prevent infinite loop to expand the same alias again
+
+    //construct the new command
+    char new_cmd[MAX_CMD_BUFFER];
+    snprintf(new_cmd, sizeof(new_cmd), "%s", alias->alias_val);
+
+    for (int i = 1; argv[i] != NULL; i++) {
+        strncat(new_cmd, " ", sizeof(new_cmd) - strlen(new_cmd) - 1); // add a space before the next argument
+        strncat(new_cmd, argv[i], sizeof(new_cmd) - strlen(new_cmd) - 1); // copy arg
+    }
+
+    new_cmd[sizeof(new_cmd) - 1] = '\0';
+    strncpy(expanded_cmd, new_cmd, MAX_CMD_BUFFER);
+    expanded_cmd[MAX_CMD_BUFFER - 1] = '\0'; // ensure null termination
+    return true;
+}
+
