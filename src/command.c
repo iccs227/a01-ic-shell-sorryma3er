@@ -12,6 +12,8 @@
 #include "alias.h"
 
 void process_cmd(char *command, char **last_cmd, int mode_indicator) {
+    if (check_and_run_alias(command)) return; // check if the command is an alias, if so, run it
+
     if (is_repeat_bg(command, *last_cmd)) {
         fprintf(stderr, "icsh: parse error near '&'\n");
         last_exit_status = 1; // set exit status to 1 for error
@@ -155,3 +157,32 @@ bool expand_alias(char *expanded_cmd, char *argv[]) {
     return true;
 }
 
+bool check_and_run_alias(char *command) {
+    if (!command || strlen(command) == 0) return false;
+
+    char peek_copy[MAX_CMD_BUFFER];
+    strncpy(peek_copy, command, sizeof(peek_copy));
+    peek_copy[sizeof(peek_copy) - 1] = '\0'; // ensure null termination
+
+    char *peek_tok = strtok(peek_copy, " "); // get the first word of the command
+    char *rest_of_line = strtok(NULL, ""); // get the rest of the line
+
+    if (peek_tok && strcmp(peek_tok, "alias") == 0) {
+        char *alias_argv[3];
+        alias_argv[0] = peek_tok;
+        alias_argv[1] = rest_of_line;
+        alias_argv[2] = NULL;
+
+        handle_alias(alias_argv);
+        return true;
+    } else if (peek_tok && strcmp(peek_tok, "unalias") == 0) {
+        char *unalias_argv[3];
+        unalias_argv[0] = peek_tok;
+        unalias_argv[1] = rest_of_line;
+        unalias_argv[2] = NULL;
+
+        handle_unalias(unalias_argv);
+        return true;
+    }
+    return false;
+}

@@ -16,4 +16,6 @@ void split_args(char *to_split, char *argv[]); //split the command into argv[] +
 
 bool expand_alias(char *expanded_cmd, char *argv[]); // expand the alias in the command, return true if alias is expanded
 
+bool check_and_run_alias(char *command); // check if the command is an alias, if so, run it
+
 #endif
