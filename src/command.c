@@ -47,7 +47,6 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
 
     // reprocess the expanded command
     bool is_background_aft = strip_ampersand(expanded_cmd); // remove trailing '&' on expanded command
-    bool is_background = is_background_pre || is_background_aft; // if either pre or post processing has '&', then its a background process
 
     char *argv[MAX_ARGS + 1]; // +1 for NULL sentinel
     char to_split[MAX_CMD_BUFFER];
@@ -55,9 +54,12 @@ void process_cmd(char *command, char **last_cmd, int mode_indicator) {
     split_args(to_split, argv); // split on the cleaned command without '&'
 
     if (expand_alias(expanded_cmd, argv)) {
+        is_background_aft = strip_ampersand(expanded_cmd);
         strcpy(to_split, expanded_cmd);
         split_args(to_split, argv); // split again after alias expansion
     }
+
+    bool is_background = is_background_pre || is_background_aft; // if either pre or post processing has '&', then its a background process
 
     if (is_background) {
         pid_t pid = fork();
