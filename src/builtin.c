@@ -8,6 +8,7 @@
 #include "shell_signal.h"
 #include "redirect.h"
 #include "job.h"
+#include "alias.h"
 
 void handle_exit(char *buffer, int mode_indicator) {
     char copy[MAX_CMD_BUFFER];
@@ -147,5 +148,65 @@ void handle_bg(char *job_specifier) {
     } else {
         PANIC("Error in bg: job %i already running\n", job_id);
         last_exit_status = 1;
+    }
+}
+
+void handle_alias(char *argv[]){
+    if (!argv[1]) { // no alias name given
+        list_aliases();
+        last_exit_status = 0;
+        return;
+    }
+
+    char *arg = argv[1];
+    char *equal_sign = strchr(arg, '=');
+    if (!equal_sign) { // no '=' founded
+        PANIC("Error in alias: usage: alias name='value'\n");
+        last_exit_status = 1;
+        return;
+    }
+
+    size_t name_len = equal_sign - arg;
+    char name_buf[256];
+    if (name_len >= sizeof(name_buf)) {
+        PANIC("Error in alias: alias name too long\n");
+        last_exit_status = 1;
+        return;
+    }
+    memcpy(name_buf, arg, name_len);
+    name_buf[name_len] = '\0'; // null-terminate the alias name
+
+    char *val = equal_sign + 1; // skip the '=' character
+    size_t val_len = strlen(val);
+    if ((val[0] == '\'' && val[val_len - 1] == '\'') || (val[0] == '"' && val[val_len - 1] == '"')) {
+        char temp_buf[256];
+        if (val_len >= sizeof(temp_buf)) {
+            PANIC("Error in alias: alias value too long\n");
+            last_exit_status = 1;
+            return;
+        }
+
+        memcpy(temp_buf, val + 1, val_len - 2);
+        temp_buf[val_len - 2] = '\0'; // null-terminate the alias value
+        add_or_update_alias(name_buf, temp_buf);
+    } else {
+        add_or_update_alias(name_buf, val);
+    }
+    last_exit_status = 0;
+}
+
+void handle_unalias(char *argv[]) {
+    if (!argv[1]) {
+        PANIC("Error in unalias: usage: unalias name\n");
+        last_exit_status = 1;
+        return;
+    }
+
+    int result = remove_alias(argv[1]);
+    if (result < 0) {
+        PANIC("Error in unalias: no such alias '%s'\n", argv[1]);
+        last_exit_status = 1;
+    } else {
+        last_exit_status = 0;
     }
 }

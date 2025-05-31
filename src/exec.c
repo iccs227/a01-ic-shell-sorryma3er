@@ -114,6 +114,10 @@ void run_cmd(char *command, char *argv[], char **last_cmd, int mode_indicator, b
             return;
         }
         handle_bg(argv[1]);
+    } else if (strcmp(token, "alias") == 0) {
+        handle_alias(argv);
+    } else if (strcmp(token, "unalias") == 0) {
+        handle_unalias(argv);
     } else {
         if (in_subshell) { // if in subshell, then rn its running external cmd in child process at the bg
             execvp(argv[0], argv);
